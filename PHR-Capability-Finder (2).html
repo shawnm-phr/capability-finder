@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capability → Module Mapping</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #EDF0F6;
+    --bg-grid: #E2E7F0;
+    --surface: #FFFFFF;
+    --ink: #12172B;
+    --muted: #5B6478;
+    --faint: #99A1B5;
+    --line: #DBE0EA;
+    --line-strong: #C3CADA;
+    --good: #1DB876;
+
+    --hr: #3A5CFF;
+    --time: #F2994A;
+    --pay: #1DB876;
+    --talent: #8B5CF6;
+    --engagement: #16B8C4;
+    --recruitment: #F2418A;
+    --insights: #2F8FE0;
+
+    --radius-lg: 22px;
+    --radius-md: 14px;
+    --radius-pill: 999px;
+    --shadow: 0 24px 48px -28px rgba(18,23,43,.28), 0 4px 12px -6px rgba(18,23,43,.08);
+    --font-display: 'Space Grotesk', 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(circle at 1px 1px, var(--bg-grid) 1px, transparent 0) 0 0/28px 28px,
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    padding: 40px 20px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap{ max-width: 860px; margin: 0 auto; }
+
+  .eyebrow{
+    display:flex; align-items:center; justify-content:space-between;
+    font-family: var(--font-mono);
+    font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 50px;
+  }
+  .eyebrow .dot{ color: var(--line-strong); margin: 0 10px; }
+  .eyebrow .stat b{ color: var(--ink); font-weight: 500; }
+  .eyebrow .brand{ display:flex; align-items:center; gap:10px; }
+  .eyebrow .logo{ height:34px; width:auto; display:block; }
+
+  h1{
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(28px, 4.4vw, 42px);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    margin: 0 0 24px;
+  }
+  .sub{
+    color: var(--muted);
+    font-size: 15px;
+    margin: 0 0 32px;
+    max-width: 46ch;
+  }
+
+  .toggle-row{
+    display:flex; align-items:center; gap:14px;
+    margin-bottom: 28px;
+  }
+  .toggle{
+    position:relative;
+    display:inline-flex;
+    background: var(--surface);
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius-pill);
+    padding: 4px;
+    box-shadow: var(--shadow);
+  }
+  .toggle .thumb{
+    position:absolute;
+    top:4px; bottom:4px; left:4px;
+    width: calc(50% - 4px);
+    background: var(--ink);
+    border-radius: var(--radius-pill);
+    transition: transform .45s cubic-bezier(.65,0,.35,1);
+    z-index: 0;
+  }
+  .toggle.is-mod .thumb{ transform: translateX(100%); }
+  .toggle button{
+    position:relative; z-index:1;
+    border:none; background:transparent; cursor:pointer;
+    font-family: var(--font-display); font-weight:600; font-size:14px;
+    padding: 11px 20px;
+    border-radius: var(--radius-pill);
+    color: var(--ink);
+    transition: color .3s ease;
+    white-space: nowrap;
+  }
+  .toggle button.active{ color: #fff; }
+
+  .flip-icon{
+    width:38px; height:38px;
+    border-radius:50%;
+    border: 1.5px solid var(--ink);
+    background: var(--surface);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    flex-shrink:0;
+    transition: background .25s ease;
+  }
+  .flip-icon:hover{ background: var(--bg-grid); }
+  .flip-icon svg{ width:18px; height:18px; transition: transform .5s cubic-bezier(.65,0,.35,1); }
+  .flip-icon.spin svg{ transform: rotate(180deg); }
+
+  .plans-btn{
+    margin-left:auto;
+    display:inline-flex; align-items:center; gap:7px;
+    font-family: var(--font-display); font-weight:600; font-size:13.5px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius-pill);
+    padding: 10px 18px;
+    text-decoration:none;
+    white-space:nowrap;
+    transition: background .2s ease, color .2s ease;
+  }
+  .plans-btn svg{ width:13px; height:13px; flex-shrink:0; }
+  .plans-btn:hover{ background: var(--ink); color:#fff; }
+
+  .stage{ perspective: 1800px; }
+  .card3d{
+    position:relative;
+    width:100%;
+    transform-style: preserve-3d;
+    transition: transform .7s cubic-bezier(.65,0,.35,1);
+    min-height: 220px;
+  }
+  .card3d.flipped{ transform: rotateY(180deg); }
+  .face{ backface-visibility: hidden; width:100%; }
+  .face.back{ position:absolute; top:0; left:0; transform: rotateY(180deg); }
+
+  .search-pill{
+    position:relative;
+    display:flex; align-items:center; gap:12px;
+    background: var(--surface);
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius-pill);
+    padding: 6px 8px 6px 22px;
+    box-shadow: var(--shadow);
+    margin-bottom: 26px;
+    transition: opacity .3s ease;
+  }
+  #capSearchBlock.hidden-mode{ display:none; }
+  .search-pill svg{ flex-shrink:0; color: var(--muted); }
+  .search-pill input{
+    flex:1; border:none; outline:none; background:transparent;
+    font-family: var(--font-body); font-size:16px; color: var(--ink);
+    padding: 12px 0;
+  }
+  .search-pill input::placeholder{ color: var(--faint); }
+  .search-pill .kbd{
+    font-family: var(--font-mono); font-size:11px; color: var(--faint);
+    border: 1px solid var(--line); border-radius:6px; padding:3px 7px;
+    flex-shrink:0;
+  }
+
+  .clear-btn{
+    display:none;
+    align-items:center; justify-content:center;
+    width:26px; height:26px;
+    border-radius:50%;
+    border:none;
+    background: var(--bg);
+    color: var(--muted);
+    cursor:pointer;
+    flex-shrink:0;
+    padding:0;
+    transition: background .15s ease, color .15s ease;
+  }
+  .clear-btn.show{ display:flex; }
+  .clear-btn:hover{ background: var(--line); color: var(--ink); }
+  .clear-btn svg{ width:12px; height:12px; }
+
+  .list-count{
+    margin: 14px 2px 10px;
+    font-family: var(--font-mono); font-size:11.5px; color: var(--faint);
+    text-transform: uppercase; letter-spacing:.06em;
+  }
+  .list-count b{ color: var(--muted); font-weight:500; }
+  .sugg-item{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    overflow:hidden;
+    transition: border-color .15s ease;
+  }
+  .sugg-item.hi{ border-color: var(--line-strong); }
+  .sugg-item.open{ border-color: var(--ink); }
+  .sugg-item .swatch{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .sugg-item .cap-name{ font-size:14px; font-weight:500; flex:1; min-width:0; }
+  .sugg-item .mod-name{
+    margin-left:auto; flex-shrink:0; font-family: var(--font-mono); font-size:11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing:.04em;
+    display:flex; align-items:center; gap:6px;
+  }
+  .sugg-item .mod-name .sw{ width:7px; height:7px; border-radius:50%; }
+  .sugg-empty{
+    text-align:center; padding: 50px 20px; color: var(--faint);
+    font-family: var(--font-mono); font-size:13px;
+  }
+  .bundle-label{
+    display:flex; align-items:center; gap:8px;
+    font-family: var(--font-display); font-size:16px; text-transform:uppercase; letter-spacing:.03em;
+    color: var(--ink); font-weight:700;
+    margin: 22px 2px 10px; padding-left: 4px;
+  }
+  .bundle-label:first-child{ margin-top:0; }
+  .bundle-label .sw{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .bundle-label .bcount{
+    margin-left:auto; color: var(--faint); font-weight:400;
+    font-family: var(--font-mono); font-size:11px; text-transform:none; letter-spacing:normal;
+  }
+
+  .sugg-item-head{
+    display:flex; align-items:center; gap:12px;
+    padding: 13px 16px;
+    cursor:pointer;
+    transition: background .15s ease;
+  }
+  .sugg-item-head:hover{ background: var(--bg); }
+  .sugg-item .chev{ transition: transform .25s ease; color: var(--faint); flex-shrink:0; }
+  .sugg-item.open .chev{ transform: rotate(90deg); }
+  .sugg-item-body{ max-height:0; overflow:hidden; transition: max-height .35s ease; }
+  .sugg-item.open .sugg-item-body{ max-height: 600px; }
+  .sugg-item-body-inner{ padding: 0 16px 18px; }
+  .sugg-item-body-inner p.desc{
+    color: var(--muted); font-size: 13.5px; line-height:1.6;
+    margin: 4px 0 16px; white-space: pre-line;
+  }
+
+  .tiers{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
+  .tiers.two-col{ grid-template-columns: repeat(2, 1fr); }
+  .tier-box{
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: var(--bg);
+  }
+  .tier-box .tname{
+    font-family: var(--font-mono); font-size:10.5px; text-transform:uppercase;
+    letter-spacing:.06em; color: var(--muted); margin-bottom:6px; display:block;
+  }
+  .tier-box .tval{ font-size: 13.5px; font-weight:500; line-height:1.35; }
+  .tier-box .tval.tick{ color: var(--good); font-size:17px; }
+  .tier-box .tval.dash{ color: var(--faint); }
+
+  .mod-item{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    overflow:hidden;
+    transition: border-color .15s ease;
+  }
+  .mod-item.open{ border-color: var(--ink); }
+  .mod-item-head{
+    display:flex; align-items:center; gap:12px;
+    padding: 14px 16px;
+    cursor:pointer;
+    transition: background .15s ease;
+  }
+  .mod-item-head:hover{ background: var(--bg); }
+  .mod-item-head .swatch{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .mod-item-head .mod-item-name{ font-family: var(--font-display); font-weight:600; font-size:14.5px; flex:1; min-width:0; }
+  .mod-item-head .mod-item-count{
+    margin-left:auto; flex-shrink:0; font-family: var(--font-mono); font-size:11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing:.04em;
+  }
+  .mod-item .chev{ transition: transform .25s ease; color: var(--faint); flex-shrink:0; }
+  .mod-item.open .chev{ transform: rotate(90deg); }
+  .mod-item-body{ max-height:0; overflow:hidden; transition: max-height .4s ease; }
+  .mod-item.open .mod-item-body{ max-height: 4000px; }
+  .mod-item-body-inner{ padding: 4px 16px 16px; }
+
+  .mod-filter{
+    position:relative;
+    display:flex; align-items:center; gap:12px;
+    background: var(--surface);
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius-pill);
+    padding: 6px 8px 6px 22px;
+    box-shadow: var(--shadow);
+    margin-bottom: 26px;
+  }
+  .mod-filter svg{ color: var(--muted); flex-shrink:0; }
+  .mod-filter input{
+    flex:1; border:none; outline:none; background:transparent;
+    font-family: var(--font-body); font-size:16px; color: var(--ink);
+    padding: 12px 0;
+  }
+  .mod-filter input::placeholder{ color: var(--faint); }
+
+  .theme-group{ margin-bottom: 20px; }
+  .theme-group h4{
+    font-family: var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.07em;
+    color: var(--muted); margin: 0 0 10px; padding-left: 4px;
+  }
+  .row{
+    background: var(--surface); border:1px solid var(--line); border-radius: 12px;
+    margin-bottom:8px; overflow:hidden;
+  }
+  .row-head{ display:flex; align-items:center; gap:12px; padding: 13px 16px; cursor:pointer; }
+  .row-head .cap-name{ font-size:14px; font-weight:500; flex:1; }
+  .row-ticks{ display:flex; gap:14px; font-family: var(--font-mono); font-size:11px; color: var(--muted); }
+  .row-ticks b{ color: var(--ink); font-weight:500; }
+  .chev{ transition: transform .25s ease; color: var(--faint); flex-shrink:0; }
+  .row.open .chev{ transform: rotate(90deg); }
+  .row-body{ max-height:0; overflow:hidden; transition: max-height .3s ease; }
+  .row.open .row-body{ max-height: 400px; }
+  .row-body-inner{ padding: 0 16px 16px; }
+  .row-body-inner p{ font-size:13.5px; color: var(--muted); line-height:1.55; margin: 4px 0 14px; white-space: pre-line; }
+
+  .mod-empty{ text-align:center; padding: 60px 20px; color: var(--faint); font-family: var(--font-mono); font-size:13px; }
+
+  /* toggle pill + plans button wrap before their combined intrinsic width outgrows the viewport */
+  @media (max-width: 760px){
+    .toggle-row{ flex-wrap:wrap; row-gap:10px; }
+    .toggle{ width:100%; }
+    .toggle button{ flex:1; text-align:center; padding:11px 8px; }
+    .plans-btn{ margin-left:0; flex:1; justify-content:center; }
+  }
+
+  @media (max-width: 600px){
+    .tiers{ grid-template-columns: 1fr; }
+    .search-pill, .mod-filter{ padding-left:16px; }
+  }
+
+  @media (max-width: 480px){
+    body{ padding: 28px 16px 44px; }
+    .eyebrow{ margin-bottom: 36px; }
+    .eyebrow .logo{ height:26px; }
+    .eyebrow .brand{ gap:8px; }
+    .toggle button{ font-size:12.5px; padding:10px 4px; }
+    .plans-btn{ font-size:12.5px; padding:10px 12px; }
+    .sugg-item-head, .mod-item-head, .row-head{ flex-wrap:wrap; row-gap:6px; }
+    .sugg-item .mod-name{ margin-left:0; flex-basis:100%; }
+    .mod-item-head .mod-item-count{ margin-left:0; flex-basis:100%; }
+    .row-ticks{ margin-left:0; flex-basis:100%; }
+  }
+
+  @media (max-width: 360px){
+    .eyebrow .brand-text{ display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">
+    <div class="brand"><img src="data:image/webp;base64,UklGRtIIAABXRUJQVlA4WAoAAAAQAAAA+QAALgAAVlA4TF4IAAAv+YALEN5Q0LYNk/KHfXYYRMQEgH55059zhqExC2epQzeNJEkSfylgz/TOve2WefYBODDHpJl0pvxwLQAgEGXbNjbbHFvb3GTXH/Ra/QOuta0/sE/jvRt9txkTYE3btsVts+72Ws9sbDb1vDAzSpW/dxntYMmJjqjMYS4zQ/Du4YbafmErXw6VQQ5httHpTaH+EvcjyLa5ygHLMHUFAAAQ/////////////98EpP1gSOiIIJu2UNrCaQutLajuAAQQSgEeIAFoAwQwk8lksmdQADeZTCYAXPf8ZDKZAFiYT8oB6kQVhbk//zM+9bEXbRW09T+dtnXaVkxbxB2BAPyXwzfMQiTQbWhgwLbPDAoObBsY6p6wbTAIQODay1AMymslAt79r90z7KbTtn7aSmkLfgARuoFhzLINJ2ACgBlGX7P/4xSm07b222IahuEH3MYuG5qupOynqleatvXcltAwbAgfv/wOgAa0KftGKJq29dQWQ0dwCg4RfCAW2uEhZdAff5aS4PUYlMNWyuAXKGvDXzZta7stmG5gQdll0IbtBDwAytijQmCErgS8AHISlgsSFdO2onuSABb6go+OUdoOGcFgLYXhgmBNW19tYfUlQISbAFvjlAAGrgPUSSG7QF8zbSu0N4F3MGCPU4KcAJtSID8ld4BVbe33B/QJEM2sATfogDVoAM+Vqu1ADapgCaYgCzidADjwgRFYgRqQ9wH4oADmu0AaiGuOgTjongXNr/eM0MfhGynRKImnatoWSW8Anfgt8SzkfOYI71CyowgwIAzOnIRFsAGIzL2LxWIBQbryBjw6Lm1b7gaAX1w4CWtv7clt3wxjTsIdxC+PDDgHuA1fu4Lp70Bbyr0BZAk4wYfz8LmtACzgyYWwD/wpQLBtKHgTlp1fAGkXQAQzLoTJx1IT6HLhZGQgKsBuCLzZyp82SA605drby4mbkiAF/svfTZ2AXJfD764SKIc5l/4O1HVA9buLH9oS5k+4G3j+php++rkWoCOR8Bm4ce+sS5VlW0FtLZS3ZdEbqCeARDrk5O+wATcJ+DuTgARXg0oBfLoc9i7VXHrFEb6WvnwrGLoDGLqjrjsDFkcIyNxxF9AQ4Hq7ABfeAnQC410bgLQXmmwb5gMoOF6H8KuAsmX3J2+F6y/nbN8GSUBeBiKwhdNgSKmBFPi3/ehZgJY+AfM3bBtkJUFvgKV9L08AB8QhFq5GBVBhPQEUGwAQdIRsCdJsGyoBUHE71Ns28EjLl8MCcJX88XfbhvKC9d+UBPgnAnw/VvYY/Ni+H5iUBLa3bEO3JDgOgK3kwydG4gQo3eMIjZKCwFXHkZqfovkFypsfpyfgOZX4WgB+3fbmidKAHyBaAnXbhgvAVPbMX7b/ejl3SFlAvMe2wacMfG17VVkotH0eYCXYC0CQSieuf1P9VtUqaJ8BbmBY3DwE2TudfAOIA6f/uoLU/AXN/1/e/OZ9ABCwQs6KIxRLu20bUpU/bhuGpO8CWKgQKmz71QyszXMC8wBjZV/bXgGU3BHbPiNBQzh+pg4YVP1EVfU6SGsQza/Wxfo5aIMyKPgEamDwutOwDUgSeIQ3ISAPW7bhRIIb2+fvLbkcvsuAtwpXV2xP5yXzqe3Nv+chO4ChBFLB3gWmAD1a7wKfhtH8jF1Uf3lHEmSGWnjQe7b9vkoBOWzLgHCJYNO2AavkW3cJDpIgL2HDPQTfOzpTiFvVMJr/pflB+oMmQJEkKOjmgQAdRQqXM7MiGA1AXAJknYC9pBPgfz5hXwSukYGvvzWQ5q9WXzB8U8lOvtTtcKsIIMMrGeAsguXwcskDnYCW4g4oWk8Y3oB+SID4KSiA9osvgtrTcGzb0DuU5pc5Ai+wcn+Ad9g4sHRHWYgJ/4OEcrDRiXXbcD0vmQUYzIB+CYDASwDwkkvh1PlKIEpIgH703WCYHlK2oBoMmsNo/qXmBzyykDSZXFE5mAYIUjVM2zbwlhwN5zNQVQJCtv29SgQXtj94WF0DGNjfb9tAPQKC7gDnlwbR/EI6Vg9UAQ7Xqo6GfwAw99+psDUDP38XXAiQVgbVtr3emQQuATRG4W/4sm1IHELzJ2s4glXbPl+yDFaSAHfdtvdn1qDVtr+fZ/zMagYcHYG7bF/4HQhLgBaEJR3IHQmgOwqCyPAWMPbX/F3NDzYkMAm+F7BTt8EJduBBkt4OhpI3AzDDuCOoKmfYBrHwHyQ7wrAk/RNAXRKAXbbtnaA0TyxvhbK3wEHSu5/fSQAqTIfjIwGw79r26/O+mr+j+aE0JACB6eAVmID885ALja/YTgDM7uAVGH0PKmDVyWMqsT+GmhegBz4d4XsWoCrA0UsgIf0TbLj4DlIPH9t3v+3wjX0ZaiH9b2i737bh/MRICDSCwbSf5v9t/ojmB9Gg9CFchdKE7sBZKL11peD81MWHFME72EuSIDZRmikFY42GfghwCyh9XGp+ZnXai4B8d8VzCQHhouzYFRV880HJypKSN+CjAAC31IBhFaRpVIDqvG1DTlfN/9X8c80f2fx0d20AHfej5yEUngr+D/GAltIaeMJNDjZAVemVjpzKnDuuLOiv5KSnHymBMZCVJPCC19zOXRoZQXTw6ToZqfnRmx9nn7p/fjabzXZ0JgEcaOyFoYO7YRqaIARkAFylD4M6ZH+9+yD0/gKCc9UI4MH28bO7YeRvEAUgFQLLC7B0DkqBMiEBI3g/DrOvHP8NcrYBkdKX7v/qFqz/+RukgPKa0oeBYTabPVwHJLPZbLYa1max4uFZBOg6Id097u7ua9g33vzCb7xZZONNrm/eYPummrbZgL6M55944oknoGWc8ECYZhc80qRrLsnTNO/qkOmZWzXMNBxQU0FJTgAAADhCSU0D7QAAAAAAEABIAAAAAQABAEgAAAABAAE4QklNBCgAAAAAAAwAAAACP/AAAAAAAAA4QklNBEMAAAAAAA1QYmVXARAABQEAAAAAAA==" alt="PeoplesHR" class="logo"><span class="brand-text"><span class="dot">·</span> CAPABILITY FINDER</span></div>
+  </div>
+
+  <div class="toggle-row">
+    <div class="toggle" id="toggle">
+      <div class="thumb"></div>
+      <button id="btnCap" class="active">Capability → Module</button>
+      <button id="btnMod">Module → Capability</button>
+    </div>
+    <div class="flip-icon" id="flipIcon" title="Flip search direction">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 2.1l4 4-4 4"/><path d="M3 12.1v-2a4 4 0 0 1 4-4h14"/>
+        <path d="M7 21.9l-4-4 4-4"/><path d="M21 11.9v2a4 4 0 0 1-4 4H3"/>
+      </svg>
+    </div>
+    <a class="plans-btn" href="https://peopleshr.com/view-plans/" target="_blank" rel="noopener">
+      View Website Plans
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+    </a>
+  </div>
+
+  <div id="capSearchBlock">
+    <h1>Search Capability</h1>
+
+    <p class="sub">Search for a capability to find which module it belongs to.</p>
+
+    <div class="search-pill" id="capSearchWrap">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="capInput" type="text" placeholder="e.g. clock-in, payslip, succession, 360 feedback…" autocomplete="off">
+      <button class="clear-btn" id="capClear" type="button" aria-label="Clear search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+      <span class="kbd" id="capKbd">↵</span>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="card3d" id="card3d">
+
+      <div class="face front">
+        <div class="list-count" id="listCount">Showing <b>129</b> of 129 capabilities</div>
+        <div class="suggestions" id="capSuggestions"></div>
+      </div>
+
+      <div class="face back">
+        <h1>Search Module</h1>
+        <p class="sub">Search for a module to see which capabilities it includes.</p>
+        <div class="mod-filter" id="modFilter">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="modInput" type="text" placeholder="Search modules…" autocomplete="off">
+          <button class="clear-btn" id="modClear" type="button" aria-label="Clear search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="list-count" id="modCount"></div>
+        <div id="modGroups"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DATA = [{"b":"HR","m":"Employee Information Manager (EIM)","th":"Structure Your Organization","c":"Define your company or group structure and hierarchy levels","d":"Set up your organisation's legal and structural hierarchy — companies, divisions, and levels — as the foundation against which employees, reporting lines, and policies are organised.","t":["Upto 3 Company Levels","Upto 5 Company Levels","Talk to Sales"]},{"b":"HR","m":"Employee Information Manager (EIM)","th":"Structure Your Organization","c":"Structure and maintain employee master records","d":"A single, structured record per employee holding all personal, professional, and statutory information from day one through to separation, extendable with configurable (dynamic) fields.","t":["Standard Information Fields","Standard Info. Fields + upto 10 custom info. fields","Talk to Sales"]},{"b":"HR","m":"Employee Information Manager (EIM)","th":"Structure Your Organization","c":"Automated employee information validation","d":"Automated checks that validate employee-submitted information and profile changes against defined rules before they are accepted, keeping master data accurate and audit-ready.","t":["Standard info. validations","upto 2 custom info. validations","Talk to Sales"]},{"b":"HR","m":"Employee Information Manager (EIM)","th":"Structure Your Organization","c":"Capture statutory registration details for every employee","d":"A structured record of each employee's statutory registration identifiers — tax, social security, and other regulatory numbers — held on the profile and applied automatically across payroll and compliance processing.","t":["✓","✓","✓"]},{"b":"HR","m":"Employee Information Manager (EIM)","th":"Structure Your Organization","c":"Store employment documents centrally","d":"A centralised store for employment contracts, certificates, ID copies, and signed acknowledgements, accessible and auditable at any time.","t":["✓","✓","✓"]},{"b":"HR","m":"Employee Information Manager (EIM)","th":"Structure Your Organization","c":"Easily generate HR and statutory letters","d":"Templated generation of HR letters — offers, confirmations, transfers, and statutory notices.","t":["✓","✓","✓"]},{"b":"HR","m":"Employee Information Manager (EIM)","th":"Structure Your Organization","c":"Electronic document signing","d":"Enables e-signature workflows for HR documents (contracts, offer letters, confirmations, etc.) directly within PeoplesHR","t":["Talk to Sales","Talk to Sales","Talk to Sales"]},{"b":"HR","m":"Employee Self-Service","th":"Structure Your Organization","c":"Flexibility for employees to update their profile information","d":"Employees can maintain their own contact, banking, and personal details without routing every change through HR.","t":["✓","✓","✓"]},{"b":"HR","m":"Employee Lifecycle Management","th":"Run the Employee Lifecycle","c":"Manage employee lifecycle, transfers, promotions and role changes","d":"Manage employee lifecycle, transfers, promotions and role changes\nStructured approval and documentation for processing employee movements, transfers, promotions, redesignations, and exits, each with its own reasons, eligibility rules, and effective dating, raised individually or in bulk.","t":["Upto 5 life cycle types","Upto 10 life cycle types and 10 validations","Talk to Sales"]},{"b":"HR","m":"Employee Lifecycle Management","th":"Run the Employee Lifecycle","c":"Manage employee exits","d":"Raise resignations and exits with configurable exit types, capture exit questionnaires and interviews to understand why people leave, and run guided clearance checklists that coordinate asset returns, system access removal, and final documentation across departments.","t":["Exits only processed through employee lifecycle","✓","✓"]},{"b":"HR","m":"Employee Lifecycle Management","th":"Run the Employee Lifecycle","c":"Automate final settlement and relieving documents on exit","d":"Automatically calculate and settle a departing employee's final pay, and generate their relieving documents.","t":["✓","✓","✓"]},{"b":"HR","m":"Employee Lifecycle Management","th":"Run the Employee Lifecycle","c":"Automate exiting employees clearance process","d":"Run a structured exit clearance workflow so a departing employee settles all outstanding obligations, returns company assets, and hands over their job duties before their departure.","t":["—","—","✓"]},{"b":"HR","m":"Manager Self-Service","th":"Run the Employee Lifecycle","c":"Supervisor approval dashboard for leaves, expense claims and team requests","d":"A single view for managers to action leave requests, expense claims, and other pending approvals without switching between systems.","t":["Standard View","Standard View + Dashboards","Standard View + Dashboards"]},{"b":"HR","m":"Mobile Application (iOS & Android)","th":"Run the Employee Lifecycle","c":"PeoplesHR Mobile App","d":"Access to PeoplesHR Android and iOS compatible Mobile Application to keep your workforce always connected.\n\nKey Features : Secure fingerprint login, location verified attendance tracking, access to payslips, policy updates, push notifications.","t":["✓","✓","✓"]},{"b":"HR","m":"Reports & Alerts","th":"Run the Employee Lifecycle","c":"Alerts","d":"Automated email and mobile notifications that keep employees and managers informed of pending approvals, requests, and key HR events as they happen.","t":["Standard email alerts + 5 custom alerts","Standard email alerts + 10 custom alerts","Talk to Sales"]},{"b":"HR","m":"Utilities","th":"Run the Employee Lifecycle","c":"Maintain a complete, tamper-evident audit trail of system activity","d":"A complete, tamper-evident record of every data import, edit, override, and user action across the system — capturing who changed what, when, and from where — for compliance, security, and dispute resolution.","t":["✓","✓","✓"]},{"b":"HR","m":"Utilities","th":"Run the Employee Lifecycle","c":"Connect and exchange data with external systems via API","d":"Structured API endpoints that let external systems, devices, and third-party applications securely push data into and pull data out of the platform, enabling real-time integration across your tech stack.","t":["Talk to Sales","Talk to Sales","Talk to Sales"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Schedule shifts and manage rosters","d":"Tools to plan, publish, and manage shift schedules across teams, locations, and work patterns. Includes configurable grace periods and lateness thresholds applied consistently across shifts.","t":["✓","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Manage multiple shift patterns across teams, departments, and sites","d":"Run different shift patterns side by side across teams, departments, and sites — each with its own timing rules — from one place.","t":["✓","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Configure flexi shift and staggered shift","d":"Set flexible clock-in windows and stagger start/end times across teams to match how the business actually runs.","t":["✓","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Adjust and reassign shifts (admin & supervisor)","d":"Supervisors and admins adjust, reassign, or swap employees' shifts directly to cover gaps and changes.","t":["✓","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Enable employee-initiated mutual shift swaps","d":"Let employees request and accept shift swaps directly with one another, subject to manager approval.","t":["—","—","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Multi-shift management [Coming Soon]","d":"Assign an employee to more than one shift in the same day, with attendance and overtime calculated across all of them.","t":["—","—","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Configure and manage employee break periods, grace hours","d":"Define break periods and grace windows for late-in or early-out, so attendance and overtime are calculated fairly and consistently.","t":["✓","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Integrate biometric and attendance capture devices","d":"Connect biometric devices (fingerprint, face, or card readers) and other attendance terminals so clock-in and clock-out data flows straight into attendance and payroll.","t":["✓","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Geo-tagged remote mobile & web clock-in/clock-out","d":"Remote clock in/out from mobile or desktop, capturing or limiting clock-in location per your policy — ideal for field and multi-site teams.","t":["✓","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Restrict clock-in to designated location zones (geo-fencing)","d":"Restrict clock-in to one or more approved location zones — employees can only clock in when they're physically inside a designated radius, preventing off-site or proxy check-ins. Optional advanced modes include a live camera photo (no gallery uploads) and face-recognition liveness checks to confirm it's genuinely the employee, on-site.","t":["—","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Real-time team & cross-department attendance analytics","d":"Live dashboards showing who's in, who's late, and how attendance is trending across teams and departments, without pulling manual reports.","t":["✓","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Approve attendance records before payroll is processed","d":"Review and sign off each employee’s attendance for the period before it feeds into payroll, so pay is always based on approved hours.","t":["✓","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Track late arrivals and early departures","d":"Record when employees arrive late or leave early against their scheduled hours, giving a clear view of attendance exceptions across teams.","t":["✓","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Manage and track overtime worked around scheduled shifts","d":"Automatically captures the extra hours an employee works before a shift starts or after it ends, so time beyond their normal schedule is recognised as overtime.","t":["✓","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Prior overtime application process","d":"Employees apply for overtime in advance, and supervisors review and approve it before the extra hours are worked — so overtime is authorised up front, not just recorded after the fact.","t":["—","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Configure statutory overtime calculations","d":"Configurable overtime calculation logic that applies your organisation's own rules and multipliers to worked hours, going beyond standard formulas to match custom attendance and pay policies.","t":["Standard calculations only","Standard calculations only","Custom calculations, Talk to Sales"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Track project time and calculate project costs","d":"Set up projects and tasks, track the hours team members log against each, and turn utilised time into project costs using configurable per-member billing rates.","t":["—","✓","✓"]},{"b":"Time","m":"Attendance Management","th":"Track Attendance & Shifts","c":"Give supervisors a live view of their team's time, attendance & approvals","d":"A single dashboard where supervisors see their team's attendance, leave, and pending approvals — and act on them in one place.","t":["—","✓","✓"]},{"b":"Time","m":"Absence (Leave) Management","th":"Manage Leaves & Compliance","c":"Maintain multiple company-wide and location-specific holiday calendars","d":"Define public and company holidays once — including calendars that differ by location or branch — so leave, attendance, and payroll all recognise non-working days automatically.","t":["Upto 2 company holiday calendars","Multiple holiday calendars","Custom requirements, Talk to Sales"]},{"b":"Time","m":"Absence (Leave) Management","th":"Manage Leaves & Compliance","c":"Track leave balance, accruals & carry-forward","d":"Simultaneous tracking of all leave categories, annual, sick, emergency, statutory, each with their own rules and balances per employee.","t":["✓","✓","✓"]},{"b":"Time","m":"Absence (Leave) Management","th":"Manage Leaves & Compliance","c":"Earned Leave Tracking","d":"Automatic accrual of earned (annual) leave as employees complete service, with balances updated continuously and available for application, carry-forward, or encashment.","t":["—","✓","✓"]},{"b":"Time","m":"Absence (Leave) Management","th":"Manage Leaves & Compliance","c":"Set statutory leaves and configure leave rules","d":"Configure the statutory leave types required in your jurisdiction, then add your own organisation-specific leave types on top.","t":["Statutory leaves only","Statutory leaves + 3 org leave types","Statutory leaves + 5 org leave types"]},{"b":"Time","m":"Absence (Leave) Management","th":"Manage Leaves & Compliance","c":"Plan and coordinate leave on a shared team calendar","d":"Let employees and managers plan time off ahead on a shared calendar — seeing team availability and potential clashes before requests are submitted.","t":["—","✓","✓"]},{"b":"Time","m":"Absence (Leave) Management","th":"Manage Leaves & Compliance","c":"Route leave requests to the right approvers","d":"Send each leave request through the right approval chain automatically, so time off is signed off by the right people before it's confirmed.","t":["✓","✓","✓"]},{"b":"Time","m":"Absence (Leave) Management","th":"Manage Leaves & Compliance","c":"Validate leave requests against balances and policy rules","d":"Automatically check every leave request against the employee’s balance, entitlement, and your policy rules before approval — flagging conflicts up front.","t":["Standard leave validations only","Standard leave validations only","Standard + custom leave validations, Talk to Sales"]},{"b":"Time","m":"Absence (Leave) Management","th":"Manage Leaves & Compliance","c":"Support hourly-based and short leave types","d":"Let employees apply for leave in hours or short durations — such as a couple of hours or a half-day — rather than only in full days, for finer-grained leave tracking.","t":["—","—","✓"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"Run Your Organisation Payroll","d":"Process end-to-end payroll for your organisation — earnings, deductions, statutory contributions, and net pay — across pay groups and parallel pay-runs using standard or custom payroll formulas.","t":["2 Parallel Pay-runs","2 Parallel Pay-runs, 5 custom formulas","Talk to Sales"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"Run multiple payroll processes","d":"Configure and run multiple payroll processes to handle different employee groups, pay cycles, or run types within a single payroll.","t":["4 pay processes","7 pay processes","Talk to Sales"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"Run piece-rate (output-based) payroll","d":"Calculate pay based on units produced or output delivered, for workforces paid per piece rather than by time.","t":["✓","✓","✓"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"Run multi-currency payroll","d":"Run independent payrolls across multiple countries, each with local statutory compliance built in . Tax, deductions, filing exports applied automatically per jurisdiction","t":["—","✓","✓"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"Bank payment file generation","d":"Export ready-to-upload bank files from each payroll run for fast, error-free salary payments.","t":["✓","✓","✓"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"General Ledger Mapping","d":"Map payroll costs to the right GL codes in your accounts and post straight to finance, no manual journals.","t":["—","✓","✓"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"Comprehensive pay register","d":"Capture all pay items per employee including base pay, overtime, night differential, allowances, deductions, and statutory contributions","t":["✓","✓","✓"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"Digital payslip generation","d":"Generate and distribute secure digital payslips employees can access anytime, with a full breakdown of earnings, deductions, and contributions.","t":["✓","✓","✓"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"Multi-level approval workflows","d":"payroll locked from data changes once approved","t":["✓","✓","Talk to Sales"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"Flag errors before processing payroll with an AI-driven anomaly detector [New]","d":"Flag errors in overtime, deductions, and other calculations before processing","t":["—","✓","✓"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"Apply salary revisions with automatic retro pay","d":"Process increments, promotions, and pay-structure changes from a set effective date, with all dependent pay items, allowances, statutory contributions, and tax, recalculated automatically under the new package.","t":["—","✓","✓"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"Apply backdated salary adjustments to correct prior-period pay","d":"Correct prior-period pay with backdated adjustments — most often to settle items that were still pending approval when payroll ran, then applied in a later run once approved.","t":["✓","✓","✓"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"Process flexible pay components","d":"Handle flexible pay components that change from one period to the next, applied automatically in each payroll run.","t":["✓","✓","✓"]},{"b":"Pay","m":"Loan & Benefits Administration","th":"Run Your Payroll Accurately","c":"Manage non-cash benefits, allowances, and entitlements","d":"Administration of non-cash benefits such as meal allowances, uniform subsidies, and medical/health coverage, with per-employee eligibility rules.","t":["3 Benefit Types","8 Benefit Types","Talk to Sales"]},{"b":"Pay","m":"Loan & Benefits Administration","th":"Run Your Payroll Accurately","c":"Issue employee loans and track balances and repayment schedules","d":"Record company loans against employees, set repayment schedules, and track outstanding balances with installments deducted automatically each payroll cycle.","t":["—","Up to 5 Loan Types","Talk to Sales"]},{"b":"Pay","m":"Absence (Leave) Management","th":"Run Your Payroll Accurately","c":"Settle unused leave as a cash payment (leave encashment)","d":"Convert unused leave balances into a cash payment and settle them through payroll — at separation or at defined encashment windows.","t":["✓","✓","✓"]},{"b":"Pay","m":"Payroll","th":"Run Your Payroll Accurately","c":"Integrate payroll with your ERP","d":"Connect payroll with your ERP so pay and cost data flow between systems — standard connectors out of the box, or custom integrations built to your setup.","t":["—","Standard integrations","Custom integrations, Talk to Sales"]},{"b":"Pay","m":"Statutory & Tax Compliance","th":"Stay Compliant","c":"Apply tax rates automatically","d":"Maintained tax tables and withholding rules aligned to current statutory rates, applied automatically to each employee's earnings profile.","t":["✓","✓","✓"]},{"b":"Pay","m":"Statutory & Tax Compliance","th":"Stay Compliant","c":"Automate statutory deductions, rate updates, and compliance reporting","d":"Preconfigured contribution tables and remittance report generation for statutory social security, health, and provident fund schemes, updated to reflect regulatory changes.","t":["✓","✓","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Run balanced scorecard appraisals across quantitative and qualitative criteria","d":"Multi-dimensional performance frameworks that evaluate employees against a defined mix of quantitative targets and qualitative competencies.","t":["—","✓","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Run 180 feedback reviews between employees and managers","d":"Structured two-way feedback between an employee and their line manager, capturing both self-assessment and manager input to give a balanced view of performance.","t":["—","✓","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Run 360 feedback assessments with input from peers, managers, and reports","d":"Structured input collection from peers, direct reports, and managers that gives employees a rounded view of their performance beyond the line manager's perspective.","t":["—","—","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Include external parties in 360 feedback assessments","d":"Extend 360 reviews to external parties — clients, partners, or vendors — for a fuller, outside-in view of performance.","t":["—","—","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Manage and track goals & OKRs","d":"A running record of individual and team objectives, with progress visible to both employees and managers throughout the review cycle.","t":["—","✓","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Plan and track how KPIs will be achieved","d":"Set out how each KPI will be achieved and track progress toward the target across the cycle.","t":["—","✓","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Calibrate appraisal ratings across teams (moderation)","d":"A structured moderation process where groups of managers review and discuss employee ratings together — sharing evidence to defend each rating — to keep standards consistent across the company, reduce bias, and adjust outlier scores to a fair consensus.","t":["—","✓","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Normalise performance scores and mitigate appraisal bias","d":"Normalise appraisal scores across teams and reviewers to keep ratings fair and comparable, reducing individual bias.","t":["—","—","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Create post-review personal development plans for employees","d":"Turn appraisal outcomes into a personal development plan for each employee, with actions and goals to work on next.","t":["—","✓","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Support employees who miss targets with a structured improvement plan","d":"Support employees who fall short of expectations with a structured, time-bound improvement plan and clear milestones.","t":["—","—","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Award salary increments based on performance and merit","d":"Award salary increments based on performance and merit outcomes, tied directly to appraisal results.","t":["—","—","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Pay out periodic incentives based on KPI achievement","d":"Pay out periodic incentives linked to KPI achievement, rewarding results against targets.","t":["—","—","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Run the full probation evaluation and confirmation process","d":"Set probation periods, schedule and conduct probation reviews, and confirm, extend, or end employment based on the outcome — managing the whole evaluation from joining through to confirmation.","t":["—","✓","✓"]},{"b":"Talent","m":"Performance Management Cycle","th":"Set Goals & Improve Performance","c":"Integrate performance and KPI data with your ERP","d":"Sync performance and KPI data with your ERP so business results and people performance stay connected across systems.","t":["—","—","✓"]},{"b":"Talent","m":"Talent Management & Succession","th":"Develop & Retain Your Best People","c":"Calibrate performance, potential, and succession readiness using 9-box grids [Coming Soon]","d":"A visual tool for calibrating employees across performance and potential dimensions, used to identify high-potentials and inform succession decisions.","t":["—","—","✓"]},{"b":"Talent","m":"Talent Management & Succession","th":"Develop & Retain Your Best People","c":"Manage succession planning pools for critical roles and leadership pipelines [Coming Soon]","d":"Defined shortlists of internal candidates ready to step into critical roles, maintained and reviewed as part of ongoing talent planning.","t":["—","—","✓"]},{"b":"Talent","m":"Talent Management & Succession","th":"Develop & Retain Your Best People","c":"Identify competency gaps against role requirements and prioritise development priorities","d":"Side-by-side mapping of an employee's current capabilities against the requirements of their current or target role, surfacing development priorities.","t":["—","—","✓"]},{"b":"Talent","m":"Training & Development","th":"Develop & Retain Your Best People","c":"Identify skills gaps and plan employee development","d":"Pinpoint skills gaps, build personalised development plans against individual goals, and assign training to employees as part of their growth path.","t":["—","✓","✓"]},{"b":"Talent","m":"Training & Development","th":"Develop & Retain Your Best People","c":"Deliver e-learning courses and track learning progress","d":"Deliver training courses digitally through e-learning, and track each employee’s progress and completion.","t":["—","—","✓"]},{"b":"Talent","m":"Training & Development","th":"Develop & Retain Your Best People","c":"Close skill gaps with AI-recommended paths","d":"Identify individual skill gaps with AI, recommend and deliver targeted courses through an integrated learning platform, and track learning journeys, completion, and compliance across the workforce.","t":["—","—","✓"]},{"b":"Talent","m":"Training & Development","th":"Develop & Retain Your Best People","c":"Administer offline and online training programmes","d":"Plan and administer both classroom and online training, and enrol employees, in one place.","t":["—","✓","✓"]},{"b":"Talent","m":"Training & Development","th":"Develop & Retain Your Best People","c":"Maintain a shared training course calendar","d":"Maintain a shared calendar of upcoming training courses so employees and managers can plan ahead.","t":["—","✓","✓"]},{"b":"Talent","m":"Training & Development","th":"Develop & Retain Your Best People","c":"Maintain trainer profiles and session history","d":"Maintain trainer profiles, their expertise, and a history of the sessions they have run.","t":["—","—","✓"]},{"b":"Talent","m":"Training & Development","th":"Develop & Retain Your Best People","c":"Collect feedback after training to measure impact","d":"Collect feedback from participants after each session to measure how effective the training was.","t":["—","✓","✓"]},{"b":"Talent","m":"Training & Development","th":"Develop & Retain Your Best People","c":"Evaluate training effectiveness","d":"Evaluate training against its objectives to see what is working and where to improve.","t":["—","✓","✓"]},{"b":"Talent","m":"Training & Development","th":"Develop & Retain Your Best People","c":"Manage training bonds and recover costs on early exit","d":"Manage training bonds and recover training costs when employees leave before the agreed period.","t":["—","✓","✓"]},{"b":"Talent","m":"Training & Development","th":"Develop & Retain Your Best People","c":"Approve training requests against available budget","d":"Route training requests through an approval flow that checks them against the available training budget before they are confirmed.","t":["—","✓","✓"]},{"b":"Talent","m":"Training & Development","th":"Develop & Retain Your Best People","c":"Maintain employee training profiles, history, and CPD points","d":"Keep a training profile for each employee with their full training history and automatically calculated CPD (continuing professional development) points.","t":["—","✓","✓"]},{"b":"Talent","m":"Workforce Planning","th":"Plan Your Workforce","c":"Model future workforce growth by hierarchy, department and job level","d":"Model future growth by planning headcount and budgets according to your specific company hierarchy, departments, and job levels.","t":["—","✓","✓"]},{"b":"Talent","m":"Workforce Planning","th":"Plan Your Workforce","c":"Plan and maintain headcount across staffing groups","d":"Structured headcount planning by staffing group, grade, department, and location, setting target staffing levels that serve as the baseline for budgeting, hiring, and workforce decisions.","t":["—","✓","✓"]},{"b":"Talent","m":"Workforce Planning","th":"Plan Your Workforce","c":"Optimise headcount and delegate planning","d":"Deliver course content through an integrated learning platform, and track learning journeys, completion, and compliance across the workforce.","t":["—","✓","✓"]},{"b":"Talent","m":"Workforce Planning","th":"Plan Your Workforce","c":"Cross-check job requisitions against your approved organizational budget and headcount","d":"Check every job requisition against your approved organisational budget and headcount before it is opened, so hiring stays within plan.","t":["—","—","✓"]},{"b":"Talent","m":"Workforce Planning","th":"Plan Your Workforce","c":"Manage and maintain outsourced staffing details and supporting documents","d":"Maintain records and supporting documents for your outsourced or contract workforce alongside your permanent staff.","t":["—","—","✓"]},{"b":"Talent","m":"Workforce Planning","th":"Plan Your Workforce","c":"Forecast workforce salary cost for the year ahead","d":"Project your total salary cost for the year ahead based on current and planned headcount, giving an early view of workforce spend.","t":["—","—","✓"]},{"b":"Talent","m":"Workforce Planning","th":"Plan Your Workforce","c":"Plan temporary delegation of duties when leaders are away","d":"Set temporary coverage for key employees such as managers and supervisors, so approvals, task decisions, and system permissions are routed to a backup employee when a leader is on leave or unavailable.","t":["—","✓","✓"]},{"b":"Engagement","m":"Engagement Surveys & Feedback","th":"Strengthen Engagement","c":"Run targeted employee surveys and pulse checks","d":"Build and schedule one-time, recurring, or event-based surveys, target them by hierarchy, segment, or specific employees, and control result visibility, collecting structured feedback to track sentiment over time.","t":["—","✓","✓"]},{"b":"Engagement","m":"Rewards & Recognition (Xoxoday)","th":"Strengthen Engagement","c":"Recognise contributions in the moment","d":"Managers and peers recognise specific contributions as they happen, tagged to the action and surfaced in a team feed so the whole organisation can see and share it.","t":["—","—","✓"]},{"b":"Engagement","m":"Grievance & Disciplinary Log","th":"Strengthen Engagement","c":"Give employees a direct channel to voice opinions","d":"A dedicated channel for employees to send suggestions, opinions, and concerns directly to the HR team, so feedback reaches the people who can act on it.","t":["✓","✓","✓"]},{"b":"Engagement","m":"Grievance & Disciplinary Log","th":"Strengthen Engagement","c":"Raise and resolve grievances with appeals","d":"Employees, managers, and department heads raise grievances against defined grounds, route them through a structured handling and resolution workflow, and escalate to appeal, with the full case history retained.","t":["✓","✓","✓"]},{"b":"Engagement","m":"Grievance & Disciplinary Log","th":"Strengthen Engagement","c":"Disciplinary & Case Management","d":"Log disciplinary incidents and manage structured case tracking against employee profiles, with letter generation at each step.","t":["✓","✓","✓"]},{"b":"Recruitment","m":"Recruitment","th":"Hire the Right People","c":"Create and approve vacancies with the right sign-off","d":"Raise job requisitions with multi-level approval (line manager → unit head → HR), post internally, externally, or both, and publish to a branded careers portal with vacancy-specific screening questions.","t":["—","✓","✓"]},{"b":"Recruitment","m":"Recruitment","th":"Hire the Right People","c":"Post job openings once and advertise everywhere","d":"Publish a vacancy once to 25,000+ external job boards including LinkedIn and Indeed via integration, with applications flowing straight back into PeoplesHR and channel controls preventing mis-posts.","t":["—","✓","✓"]},{"b":"Recruitment","m":"Recruitment","th":"Hire the Right People","c":"Give candidates an interactive application portal","d":"A branded, self-service portal where candidates browse openings, apply, and track their application status in real time.","t":["—","✓","✓"]},{"b":"Recruitment","m":"Recruitment","th":"Hire the Right People","c":"Rank and shortlist candidates","d":"Automatically rank applicants against the role and surface the strongest shortlist, so recruiters focus on the best-fit candidates.","t":["—","✓","✓"]},{"b":"Recruitment","m":"Recruitment","th":"Hire the Right People","c":"Run multi-stage interviews and structured selection","d":"Schedule multi-stage interviews with per-stage panels, assign scorecards for consistent feedback, and run video interviews through Zoom, Teams, or Google Meet.","t":["—","✓","✓"]},{"b":"Recruitment","m":"Recruitment","th":"Hire the Right People","c":"Index and search interview video with AI","d":"AI transcribes and indexes recorded interviews, so you can search, jump to key moments, and compare candidates without rewatching the full recording.","t":["—","—","✓"]},{"b":"Recruitment","m":"Recruitment","th":"Hire the Right People","c":"Make offers and hand off to onboarding","d":"Manage offer proposals with acceptance and rejection tracking, capture required documents during application, and pass accepted candidates straight into onboarding.","t":["—","✓","✓"]},{"b":"Recruitment","m":"Recruitment","th":"Hire the Right People","c":"Automate compensation offers, negotiation, and offer-letter generation","d":"Build salary and compensation packages, run the offer negotiation workflow with candidates, and automatically generate the offer letters.","t":["—","✓","✓"]},{"b":"Recruitment","m":"Recruitment","th":"Hire the Right People","c":"Capture and store CVs from outside the system","d":"Capture and store CVs received from outside the system — direct applications, referrals, and agency submissions — into a single candidate pool for screening.","t":["—","—","✓"]},{"b":"Recruitment","m":"Recruitment","th":"Hire the Right People","c":"Bulk CV upload","d":"Upload many candidate CVs at once in a single batch, rather than adding them one at a time.","t":["—","✓","✓"]},{"b":"Recruitment","m":"Recruitment","th":"Hire the Right People","c":"Bulk CV parsing","d":"Automatically extract structured candidate information — contact details, experience, and skills — from CVs in bulk.","t":["—","✓","✓"]},{"b":"Recruitment","m":"Recruitment","th":"Hire the Right People","c":"CV ranking with AI","d":"AI extracts the information from each CV and ranks candidates against your defined job criteria, surfacing the best-fit applicants automatically.","t":["—","—","✓"]},{"b":"Recruitment","m":"Recruitment","th":"Hire the Right People","c":"Track hiring performance and cost","d":"Report on recruitment channels and pipeline in-system, and set and manage recruitment budgets by company or business-unit hierarchy.","t":["—","—","✓"]},{"b":"Recruitment","m":"Onboarding Checklists","th":"Onboard New Joiners","c":"Automatically convert hired candidates into employees","d":"When a candidate is hired, automatically create their employee record and employee number and move them into onboarding — no manual re-entry.","t":["—","✓","✓"]},{"b":"Recruitment","m":"Onboarding Checklists","th":"Onboard New Joiners","c":"Structured onboarding documentation checklist","d":"When a candidate is hired, automatically create their employee record and employee number and move them into onboarding — no manual re-entry.","t":["—","✓","✓"]},{"b":"Recruitment","m":"Onboarding Checklists","th":"Onboard New Joiners","c":"Assign and track onboarding tasks across teams","d":"Assigned action lists for HR, IT, line managers, and the new joiner, with each task scheduled relative to the joining date (before, on, or after Day 1) and alerts that keep every stakeholder on track to completion.","t":["—","✓","✓"]},{"b":"Recruitment","m":"Onboarding Checklists","th":"Onboard New Joiners","c":"Maintain asset assignments checklist for new joiners","d":"Track the assets — laptop, phone, access cards, and more — assigned to each new joiner as part of onboarding.","t":["—","✓","✓"]},{"b":"Recruitment","m":"Onboarding Checklists","th":"Onboard New Joiners","c":"Plan and track new-hire induction","d":"Structured first-week or first-month programmes that ensure new hires meet the right people, complete required training, and reach productivity faster.","t":["—","✓","✓"]},{"b":"Insights","m":"Report Navigator & On-Demand Reporting","th":"Turn Workforce Data into Decisions","c":"Access a library of standard reports spanning every module","d":"A library of pre-built standard reports across every module, available on demand so HR can pull common data views without building them from scratch.","t":["✓","✓","✓"]},{"b":"Insights","m":"Report Navigator & On-Demand Reporting","th":"Turn Workforce Data into Decisions","c":"Build your own reports on demand, from scratch","d":"A front-end, on-demand report builder where any user can create a report from scratch themselves, without waiting on a pre-configured template.","t":["✓","✓","✓"]},{"b":"Insights","m":"Report Navigator & On-Demand Reporting","th":"Turn Workforce Data into Decisions","c":"Custom reports tailored to the metrics you care about","d":"Reports tailored to the specific metrics and KPIs you care about, configured for your organisation and ready to run whenever you need them.","t":["—","Upto 10 custom reports","Talk to Sales"]},{"b":"Insights","m":"Report Navigator & On-Demand Reporting","th":"Turn Workforce Data into Decisions","c":"Schedule automated reports","d":"Automated report generation and distribution on set frequencies, ensuring the right data reaches the right people on time.","t":["—","upto 3 scheduled reports","Talk to Sales"]},{"b":"Insights","m":"Predictive Turnover Analytics","th":"Turn Workforce Data into Decisions","c":"Analyse workforce data across the enterprise with interactive analytics","d":"Enterprise-wide analytics that consolidate data from every module into a single analytical layer, giving leadership organisation-level insight across the entire workforce.","t":["—","3 standard dashboards","Talk to Sales"]},{"b":"Insights","m":"Enterprise Dashboards","th":"Turn Workforce Data into Decisions","c":"Monitor live workforce metrics and connect payroll, performance and engagement data in one view","d":"Live visualisations of key workforce metrics that update as data changes, combined with indicators that draw from multiple modules at once — connecting payroll cost to headcount, or attrition to engagement scores. Together they give leadership an always-current, joined-up view without waiting for reporting cycles.","t":["✓","✓","✓"]},{"b":"Insights","m":"Lexi Ai","th":"Ask Lexi AI","c":"Lexi Ai Insights [New]","d":"Two AI capabilities, both subject to your enabled modules:\n\nGet instant AI answers to any workforce question, in plain language — pose questions conversationally and get instant, data-backed answers across every HR module, with Lexi asking clarifying follow-ups like an analyst would.\n\nLet AI surface insights and build your reports — Lexi generates reports and charts on demand, drills deeper through follow-up questions while remembering context, and traces every answer back to the source data you can verify.","t":["Add-on","Add-on","Add-on"]},{"b":"Insights","m":"Lexi Ai","th":"Ask Lexi AI","c":"Lexi Super Agent","d":"Let employees self-serve and complete tasks by asking AI — a conversational assistant that answers employees' own HR questions (payslips, leave balances, benefits, policies) and completes tasks like filing leave or applying for benefits, just by asking. (Capabilities are subject to enabled modules.) Usage is subject to token limitations.","t":["Add-on","✓","✓"]},{"b":"Insights","m":"Lexi Ai","th":"Ask Lexi AI","c":"Lexi Smart Navigator","d":"Navigate to any screen by a simple search — jump straight to any screen, feature, or record by typing what you need; Lexi interprets the request and takes you there, removing the need to click through menus. Usage is subject to token limitations.","t":["✓","✓","✓"]}];
+
+const BUNDLE_COLOR = {
+  HR: 'var(--hr)', Time: 'var(--time)', Pay: 'var(--pay)', Talent: 'var(--talent)',
+  Engagement: 'var(--engagement)', Recruitment: 'var(--recruitment)', Insights: 'var(--insights)'
+};
+const BUNDLE_ORDER = ['HR','Time','Pay','Talent','Engagement','Recruitment','Insights'];
+
+/* module -> its (first-seen) bundle, and stable module order */
+const MODULE_BUNDLE = {};
+const MODULE_ORDER = [];
+DATA.forEach(d => {
+  if(!(d.m in MODULE_BUNDLE)){ MODULE_BUNDLE[d.m] = d.b; MODULE_ORDER.push(d.m); }
+});
+
+const toggle = document.getElementById('toggle');
+const btnCap = document.getElementById('btnCap');
+const btnMod = document.getElementById('btnMod');
+const flipIcon = document.getElementById('flipIcon');
+const card3d = document.getElementById('card3d');
+const capSearchBlock = document.getElementById('capSearchBlock');
+let mode = 'cap';
+
+function setMode(next){
+  if(next === mode) return;
+  mode = next;
+  toggle.classList.toggle('is-mod', mode === 'mod');
+  btnCap.classList.toggle('active', mode === 'cap');
+  btnMod.classList.toggle('active', mode === 'mod');
+  card3d.classList.toggle('flipped', mode === 'mod');
+  capSearchBlock.classList.toggle('hidden-mode', mode === 'mod');
+  flipIcon.classList.add('spin');
+  setTimeout(()=> flipIcon.classList.remove('spin'), 500);
+}
+btnCap.addEventListener('click', ()=> setMode('cap'));
+btnMod.addEventListener('click', ()=> setMode('mod'));
+flipIcon.addEventListener('click', ()=> setMode(mode === 'cap' ? 'mod' : 'cap'));
+
+function tierCell(val){
+  if(val === '✓') return `<span class="tval tick">✓</span>`;
+  if(val === '—') return `<span class="tval dash">—</span>`;
+  return `<span class="tval">${val}</span>`;
+}
+/* Talent and Recruitment don't offer a Manage tier — drop that column for them */
+function hasManageTier(item){ return item.b !== 'Talent' && item.b !== 'Recruitment'; }
+function tiersHTML(item){
+  const showManage = hasManageTier(item);
+  return `
+    <div class="tiers${showManage ? '' : ' two-col'}">
+      ${showManage ? `<div class="tier-box"><span class="tname">Manage</span>${tierCell(item.t[0])}</div>` : ''}
+      <div class="tier-box"><span class="tname">Grow</span>${tierCell(item.t[1])}</div>
+      <div class="tier-box"><span class="tname">Transform</span>${tierCell(item.t[2])}</div>
+    </div>`;
+}
+/* ---------------- CAPABILITY -> MODULE ---------------- */
+const capInput = document.getElementById('capInput');
+const capClear = document.getElementById('capClear');
+const capKbd = document.getElementById('capKbd');
+const capSuggestions = document.getElementById('capSuggestions');
+const listCount = document.getElementById('listCount');
+let hiIndex = -1;
+let currentMatches = [];
+let selectedCapability = null;
+
+function closeAllExpanded(){
+  [...capSuggestions.querySelectorAll('.sugg-item.open')].forEach(el => el.classList.remove('open'));
+  selectedCapability = null;
+}
+
+/* expand/collapse a capability card in place, where it already sits in the list */
+function toggleExpand(el, item){
+  const wasOpen = el.classList.contains('open');
+  closeAllExpanded();
+  if(!wasOpen){
+    el.classList.add('open');
+    selectedCapability = item.c;
+  }
+}
+
+function renderSuggestions(matches){
+  /* group into bundle sections (HR, Time, Pay, …) preserving BUNDLE_ORDER, then original relative order within each */
+  const grouped = BUNDLE_ORDER.flatMap(b => matches.filter(d => d.b === b));
+  currentMatches = grouped;
+  hiIndex = -1;
+  listCount.innerHTML = `Showing <b>${grouped.length}</b> of ${DATA.length} capabilities`;
+  if(!grouped.length){
+    capSuggestions.innerHTML = `<div class="sugg-empty">No capabilities match that search.</div>`;
+    return;
+  }
+  let html = '';
+  let lastBundle = null;
+  grouped.forEach((item, i) => {
+    if(item.b !== lastBundle){
+      lastBundle = item.b;
+      const count = grouped.filter(d => d.b === item.b).length;
+      html += `<div class="bundle-label"><span class="sw" style="background:${BUNDLE_COLOR[item.b]}"></span>${item.b} <span class="bcount">${count}</span></div>`;
+    }
+    html += `
+    <div class="sugg-item${item.c === selectedCapability ? ' open' : ''}" data-i="${i}">
+      <div class="sugg-item-head">
+        <span class="swatch" style="background:${BUNDLE_COLOR[item.b]}"></span>
+        <span class="cap-name">${item.c}</span>
+        <span class="mod-name"><span class="sw" style="background:${BUNDLE_COLOR[item.b]}"></span>${item.m}</span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+      </div>
+      <div class="sugg-item-body">
+        <div class="sugg-item-body-inner">
+          <p class="desc">${item.d}</p>
+          ${tiersHTML(item)}
+        </div>
+      </div>
+    </div>`;
+  });
+  capSuggestions.innerHTML = html;
+  [...capSuggestions.querySelectorAll('.sugg-item')].forEach(el => {
+    el.querySelector('.sugg-item-head').addEventListener('click', () => {
+      const item = currentMatches[+el.dataset.i];
+      toggleExpand(el, item);
+    });
+  });
+}
+
+function filterAndRender(){
+  capClear.classList.toggle('show', capInput.value.length > 0);
+  capKbd.style.display = capInput.value.length > 0 ? 'none' : '';
+  const q = capInput.value.trim().toLowerCase();
+  if(!q){
+    renderSuggestions(DATA);
+    return;
+  }
+  const nameMatches = DATA.filter(d => d.c.toLowerCase().includes(q));
+  const descMatches = DATA.filter(d => !d.c.toLowerCase().includes(q) && d.d.toLowerCase().includes(q));
+  renderSuggestions([...nameMatches, ...descMatches]);
+}
+
+capInput.addEventListener('input', filterAndRender);
+capClear.addEventListener('click', () => {
+  capInput.value = '';
+  filterAndRender();
+  capInput.focus();
+});
+
+capInput.addEventListener('keydown', (e) => {
+  const items = [...capSuggestions.children].filter(el => el.classList.contains('sugg-item'));
+  if(!items.length) return;
+  if(e.key === 'ArrowDown'){ e.preventDefault(); hiIndex = Math.min(hiIndex+1, items.length-1); }
+  else if(e.key === 'ArrowUp'){ e.preventDefault(); hiIndex = Math.max(hiIndex-1, 0); }
+  else if(e.key === 'Enter'){
+    e.preventDefault();
+    const idx = hiIndex >= 0 ? hiIndex : 0;
+    const el = items[idx];
+    const item = currentMatches[idx];
+    if(el && item) toggleExpand(el, item);
+    return;
+  } else return;
+  items.forEach((el,i) => el.classList.toggle('hi', i===hiIndex));
+  items[hiIndex] && items[hiIndex].scrollIntoView({block:'nearest'});
+});
+
+/* initial render: show all capabilities by default */
+renderSuggestions(DATA);
+
+/* ---------------- MODULE -> CAPABILITY ---------------- */
+const modGroups = document.getElementById('modGroups');
+const modInput = document.getElementById('modInput');
+const modClear = document.getElementById('modClear');
+const modCount = document.getElementById('modCount');
+let expandedModule = null;
+
+const countsByModule = {};
+DATA.forEach(d => countsByModule[d.m] = (countsByModule[d.m]||0)+1);
+
+/* modules grouped by bundle, preserving BUNDLE_ORDER and first-seen module order within each */
+const MODULES_GROUPED = BUNDLE_ORDER.flatMap(b => MODULE_ORDER.filter(m => MODULE_BUNDLE[m] === b));
+
+/* the accordion of capability theme-groups / rows shown inside an expanded module — same markup as the capability tiers card */
+function capabilitiesMarkup(mod){
+  const items = DATA.filter(d => d.m === mod);
+  const themes = [...new Set(items.map(i => i.th))];
+  return themes.map(theme => {
+    const rows = items.filter(i => i.th === theme).map((item, idx) => {
+      const rid = `${mod}-${theme}-${idx}`.replace(/\s+/g,'_');
+      return `
+        <div class="row" id="row-${rid}">
+          <div class="row-head" data-rid="${rid}">
+            <span class="cap-name">${item.c}</span>
+            <div class="row-ticks">
+              ${hasManageTier(item) ? `<span>M <b>${item.t[0]==='✓'?'✓':(item.t[0]==='—'?'—':'●')}</b></span>` : ''}
+              <span>G <b>${item.t[1]==='✓'?'✓':(item.t[1]==='—'?'—':'●')}</b></span>
+              <span>T <b>${item.t[2]==='✓'?'✓':(item.t[2]==='—'?'—':'●')}</b></span>
+            </div>
+            <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <div class="row-body">
+            <div class="row-body-inner">
+              <p>${item.d}</p>
+              ${tiersHTML(item)}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    return `<div class="theme-group"><h4>${theme}</h4>${rows}</div>`;
+  }).join('');
+}
+
+function closeAllModules(){
+  [...modGroups.querySelectorAll('.mod-item.open')].forEach(el => el.classList.remove('open'));
+  expandedModule = null;
+}
+
+function toggleModuleExpand(el, m){
+  const wasOpen = el.classList.contains('open');
+  closeAllModules();
+  if(!wasOpen){
+    el.classList.add('open');
+    expandedModule = m;
+  }
+}
+
+/* search filters MODULES (across all bundles) — a matching module stays stacked under its bundle */
+function renderModGroups(){
+  modClear.classList.toggle('show', modInput.value.length > 0);
+  const q = modInput.value.trim().toLowerCase();
+  const filtered = MODULES_GROUPED.filter(m => !q || m.toLowerCase().includes(q));
+  modCount.innerHTML = `Showing <b>${filtered.length}</b> of ${MODULES_GROUPED.length} modules`;
+
+  if(!filtered.length){
+    modGroups.innerHTML = `<div class="mod-empty">No modules match "${q}".</div>`;
+    return;
+  }
+
+  let html = '';
+  let lastBundle = null;
+  filtered.forEach(m => {
+    const b = MODULE_BUNDLE[m];
+    if(b !== lastBundle){
+      lastBundle = b;
+      const count = filtered.filter(mm => MODULE_BUNDLE[mm] === b).length;
+      html += `<div class="bundle-label"><span class="sw" style="background:${BUNDLE_COLOR[b]}"></span>${b} <span class="bcount">${count}</span></div>`;
+    }
+    html += `
+    <div class="mod-item${m === expandedModule ? ' open' : ''}" data-m="${m}">
+      <div class="mod-item-head">
+        <span class="swatch" style="background:${BUNDLE_COLOR[b]}"></span>
+        <span class="mod-item-name">${m}</span>
+        <span class="mod-item-count">${countsByModule[m]||0} capabilities</span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+      </div>
+      <div class="mod-item-body">
+        <div class="mod-item-body-inner">
+          ${capabilitiesMarkup(m)}
+        </div>
+      </div>
+    </div>`;
+  });
+  modGroups.innerHTML = html;
+
+  [...modGroups.querySelectorAll('.mod-item')].forEach(el => {
+    el.querySelector('.mod-item-head').addEventListener('click', () => toggleModuleExpand(el, el.dataset.m));
+  });
+  [...modGroups.querySelectorAll('.row-head')].forEach(head => {
+    head.addEventListener('click', () => head.closest('.row').classList.toggle('open'));
+  });
+}
+modInput.addEventListener('input', renderModGroups);
+modClear.addEventListener('click', () => {
+  modInput.value = '';
+  renderModGroups();
+  modInput.focus();
+});
+
+/* initial render: no module expanded by default */
+renderModGroups();
+</script>
+</body>
+</html>
