@@ -629,12 +629,11 @@ function capabilitiesMarkup(mod){
         <div class="row" id="row-${rid}">
           <div class="row-head" data-rid="${rid}">
             <span class="cap-name">${item.c}</span>
-            ${NO_TIER_MODULES.includes(item.m) ? '' : `
             <div class="row-ticks">
               ${hasManageTier(item) ? `<span>M <b>${item.t[0]==='✓'?'✓':(item.t[0]==='—'?'—':'●')}</b></span>` : ''}
               <span>G <b>${item.t[1]==='✓'?'✓':(item.t[1]==='—'?'—':'●')}</b></span>
               <span>T <b>${item.t[2]==='✓'?'✓':(item.t[2]==='—'?'—':'●')}</b></span>
-            </div>`}
+            </div>
             <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
           </div>
           <div class="row-body">
